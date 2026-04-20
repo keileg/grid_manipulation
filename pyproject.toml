@@ -1,0 +1,7 @@
+[project]
+name = "grid-manipulation"
+version = "0.1.0"
+description = "Tools for manipulating PorePy grids"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["numpy"]
