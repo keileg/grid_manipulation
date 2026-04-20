@@ -33,16 +33,45 @@ def merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2):
     face_nodes_2 = g2.face_nodes.tocsc().indices.reshape(
         (g2.dim, g2.num_faces), order="F"
     )
-    face_nodes_2_reduced = np.delete(face_nodes_2, faces_2, axis=1)
-    face_nodes_2_reduced = node_ind_2[face_nodes_2_reduced]
+    face_nodes_2_mapped = node_ind_2[face_nodes_2]
+    faces_to_delete = face_nodes_2_mapped[:, faces_2].copy()
+    face_nodes_2_reduced = np.delete(face_nodes_2_mapped, faces_2, axis=1)
+
+    fn_unique, mapping = np.unique(
+        np.sort(np.hstack((face_nodes_1[:, faces_1], faces_to_delete)), axis=0),
+        return_inverse=True,
+        axis=1,
+    )
+    assert fn_unique.shape[1] == faces_1.size
+
+    mapping_1 = mapping[: faces_1.size]
+    mapping_2 = mapping[faces_1.size :]
+    faces_1_mapped = faces_1[mapping_1]
+    faces_2_mapped = faces_2[mapping_2]
 
     face_ind_2 = g1.num_faces + np.arange(g2.num_faces)
     reduction = np.cumsum(np.isin(np.arange(g2.num_faces), faces_2))
     face_ind_2 -= reduction
     for i in range(faces_2.size):
-        face_ind_2[faces_2[i]] = faces_1[i]
+        face_ind_2[faces_2_mapped[i]] = faces_1_mapped[i]
 
-    return np.hstack((face_nodes_1, face_nodes_2_reduced)), face_ind_2
+    return (
+        np.hstack((face_nodes_1, face_nodes_2_reduced)),
+        face_ind_2,
+    )
+
+
+def merge_cell_faces(g1, g2, face_ind_2):
+    cell_faces_1 = g1.cell_faces.tocsc().indices.reshape(
+        (g1.dim + 1, g1.num_cells), order="F"
+    )
+    cell_faces_2 = g2.cell_faces.tocsc().indices.reshape(
+        (g2.dim + 1, g2.num_cells), order="F"
+    )
+    cell_faces_2_reduced = np.delete(cell_faces_2, face_ind_2, axis=1)
+    cell_faces_2_reduced = face_ind_2[cell_faces_2_reduced]
+
+    return np.hstack((cell_faces_1, cell_faces_2_reduced))
 
 
 def match_nodes(n_1, n_2):

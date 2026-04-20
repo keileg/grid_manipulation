@@ -68,15 +68,24 @@ def test_merge_face_nodes(nx, active_dim):
 
     faces_1 = np.where(g1.face_centers[active_dim, :] == offset)[0]
     faces_2 = np.where(g2.face_centers[active_dim, :] == offset)[0]
-    fn_merged, face_ind = paste_grids.merge_face_nodes(
-        g1, g2, faces_1, faces_2, np.arange(g2.num_nodes) + g1.num_nodes
+
+    node_map = np.arange(g2.num_nodes) + g1.num_nodes
+    for ni in range(g2.num_nodes):
+        if g2.nodes[active_dim, ni] == offset:
+            ind_in_g1 = np.where(
+                np.all(g2.nodes[:, ni][:, None] == g1.nodes[:, :], axis=0)
+            )[0]
+            node_map[ni] = ind_in_g1
+
+    fn_merged, face_ind_2 = paste_grids.merge_face_nodes(
+        g1, g2, faces_1, faces_2, node_map
     )
     assert fn_merged.shape[1] == g_merged.num_faces
     passive_dim = np.delete(np.arange(3), active_dim)
     num_overlapping_faces = np.prod(nx[passive_dim]) * 2
     assert fn_merged.shape[1] == g1.num_faces + g2.num_faces - num_overlapping_faces
-    assert face_ind.size == g2.num_faces
-    assert np.sum(face_ind < g1.num_faces) == num_overlapping_faces
+    assert face_ind_2.size == g2.num_faces
+    assert np.sum(face_ind_2 < g1.num_faces) == num_overlapping_faces
 
     for fi in range(g2.num_faces):
         if fi in faces_2:
