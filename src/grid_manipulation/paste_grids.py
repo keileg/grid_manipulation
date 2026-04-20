@@ -26,6 +26,25 @@ def merge_node_coords(g1, g2, plane_coefficients, offset):
     return np.hstack((g1.nodes, reduced_nodes_2)), nodes_1, nodes_2, ind_2
 
 
+def merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2):
+    face_nodes_1 = g1.face_nodes.tocsc().indices.reshape(
+        (g1.dim, g1.num_faces), order="F"
+    )
+    face_nodes_2 = g2.face_nodes.tocsc().indices.reshape(
+        (g2.dim, g2.num_faces), order="F"
+    )
+    face_nodes_2_reduced = np.delete(face_nodes_2, faces_2, axis=1)
+    face_nodes_2_reduced = node_ind_2[face_nodes_2_reduced]
+
+    face_ind_2 = g1.num_faces + np.arange(g2.num_faces)
+    reduction = np.cumsum(np.isin(np.arange(g2.num_faces), faces_2))
+    face_ind_2 -= reduction
+    for i in range(faces_2.size):
+        face_ind_2[faces_2[i]] = faces_1[i]
+
+    return np.hstack((face_nodes_1, face_nodes_2_reduced)), face_ind_2
+
+
 def match_nodes(n_1, n_2):
     num_nodes = n_1.shape[1]
     assert n_2.shape[1] == num_nodes
