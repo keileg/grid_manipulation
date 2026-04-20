@@ -70,12 +70,7 @@ def test_merge_face_nodes(nx, active_dim):
     faces_2 = np.where(g2.face_centers[active_dim, :] == offset)[0]
 
     node_map = np.arange(g2.num_nodes) + g1.num_nodes
-    for ni in range(g2.num_nodes):
-        if g2.nodes[active_dim, ni] == offset:
-            ind_in_g1 = np.where(
-                np.all(g2.nodes[:, ni][:, None] == g1.nodes[:, :], axis=0)
-            )[0]
-            node_map[ni] = ind_in_g1
+    _mapping_from_coordinates(g1.nodes, g2.nodes, node_map, active_dim, offset)
 
     fn_merged, face_ind_2 = paste_grids.merge_face_nodes(
         g1, g2, faces_1, faces_2, node_map
@@ -92,6 +87,47 @@ def test_merge_face_nodes(nx, active_dim):
             np.testing.assert_array_equal(offset, g2.face_centers[active_dim, fi])
         else:
             np.testing.assert_array_less(offset, g2.face_centers[active_dim, fi])
+
+
+def _mapping_from_coordinates(coord_1, coord_2, mapping, active_dim, offset):
+    for ni in range(coord_2.shape[1]):
+        if coord_2[active_dim, ni] == offset:
+            ind_in_g1 = np.where(
+                np.all(coord_2[:, ni][:, None] == coord_1[:, :], axis=0)
+            )[0]
+            mapping[ni] = ind_in_g1
+
+
+@pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
+@pytest.mark.parametrize("active_dim", [0, 1, 2])
+def test_merge_cell_faces(nx, active_dim):
+    g1 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
+    g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
+    offset = 1
+
+    g2.nodes[active_dim, :] += offset
+    g1.compute_geometry()
+    g2.compute_geometry()
+
+    plane_coefficients = np.zeros(3)
+    plane_coefficients[active_dim] = 1
+
+    nx_merged = np.copy(nx)
+    nx_merged[active_dim] = 2 * nx[active_dim]
+    g_merged = pp.StructuredTetrahedralGrid(nx_merged, [1, 1, 1])
+
+    faces_1 = np.where(g1.face_centers[active_dim, :] == offset)[0]
+    faces_2 = np.where(g2.face_centers[active_dim, :] == offset)[0]
+
+    face_map = np.arange(g2.num_faces) + g1.num_faces
+    _mapping_from_coordinates(
+        g1.face_centers, g2.face_centers, face_map, active_dim, offset
+    )
+
+    cf_merged = paste_grids.merge_cell_faces(g1, g2, faces_1, faces_2, face_map)
+    assert cf_merged.shape[1] == g_merged.num_cells
+
+    assert np.unique(cf_merged).size == g_merged.num_faces
 
 
 @pytest.mark.parametrize(

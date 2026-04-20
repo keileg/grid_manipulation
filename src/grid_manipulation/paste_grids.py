@@ -61,17 +61,16 @@ def merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2):
     )
 
 
-def merge_cell_faces(g1, g2, face_ind_2):
+def merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2):
     cell_faces_1 = g1.cell_faces.tocsc().indices.reshape(
         (g1.dim + 1, g1.num_cells), order="F"
     )
     cell_faces_2 = g2.cell_faces.tocsc().indices.reshape(
         (g2.dim + 1, g2.num_cells), order="F"
     )
-    cell_faces_2_reduced = np.delete(cell_faces_2, face_ind_2, axis=1)
-    cell_faces_2_reduced = face_ind_2[cell_faces_2_reduced]
+    cell_faces_2_mapped = face_ind_2[cell_faces_2]
 
-    return np.hstack((cell_faces_1, cell_faces_2_reduced))
+    return np.hstack((cell_faces_1, cell_faces_2_mapped))
 
 
 def match_nodes(n_1, n_2):
