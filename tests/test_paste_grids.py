@@ -43,12 +43,17 @@ def test_match_nodes(seed):
     np.testing.assert_allclose(n2, common[:, mapped_2])
 
 
-def _grid_factory(nx, active_dim):
+def _grid_factory(nx, active_dim, flip_nodes):
     g1 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
     g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
     offset = 1
 
     g2.nodes[active_dim, :] += offset
+
+    if flip_nodes:
+        passive_dims = np.delete(np.arange(3), active_dim)
+        g2.nodes[passive_dims, :] = np.flip(g2.nodes[passive_dims, :], axis=1)
+
     g1.compute_geometry()
     g2.compute_geometry()
 
@@ -66,8 +71,9 @@ def _merged_grid_factory(nx, active_dim):
 
 @pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
 @pytest.mark.parametrize("active_dim", [0, 1, 2])
-def test_merge_node_coords(nx, active_dim):
-    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim)
+@pytest.mark.parametrize("flip_nodes", [False, True])
+def test_merge_node_coords(nx, active_dim, flip_nodes):
+    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim, flip_nodes)
     nodes, _, _, ind_2 = paste_grids.merge_node_coords(
         g1, g2, plane_coefficients, offset
     )
@@ -81,8 +87,9 @@ def test_merge_node_coords(nx, active_dim):
 
 @pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
 @pytest.mark.parametrize("active_dim", [0, 1, 2])
-def test_merge_face_nodes(nx, active_dim):
-    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim)
+@pytest.mark.parametrize("flip_nodes", [False, True])
+def test_merge_face_nodes(nx, active_dim, flip_nodes):
+    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim, flip_nodes)
 
     g_merged = _merged_grid_factory(nx, active_dim)
 
@@ -112,16 +119,17 @@ def test_merge_face_nodes(nx, active_dim):
 def _mapping_from_coordinates(coord_1, coord_2, mapping, active_dim, offset):
     for ni in range(coord_2.shape[1]):
         if coord_2[active_dim, ni] == offset:
-            ind_in_g1 = np.where(
-                np.all(coord_2[:, ni][:, None] == coord_1[:, :], axis=0)
-            )[0]
-            mapping[ni] = ind_in_g1
+            dist = np.linalg.norm(coord_1 - coord_2[:, ni][:, None], axis=0)
+            ind_in_g1 = np.where(dist < 1e-8)[0]
+            assert ind_in_g1.size == 1
+            mapping[ni] = ind_in_g1[0]
 
 
 @pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
 @pytest.mark.parametrize("active_dim", [0, 1, 2])
-def test_merge_cell_faces(nx, active_dim):
-    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim)
+@pytest.mark.parametrize("flip_nodes", [False, True])
+def test_merge_cell_faces(nx, active_dim, flip_nodes):
+    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim, flip_nodes)
 
     g_merged = _merged_grid_factory(nx, active_dim)
 
