@@ -4,6 +4,23 @@ import pytest
 from grid_manipulation import paste_grids
 
 
+@pytest.mark.parametrize("nx", [np.array([1, 1, 1])])
+def test_paste_3d_simplex_grids(nx):
+    g1 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
+    g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
+
+    offset = 1
+
+    g2.nodes[2, :] += offset
+
+    plane_coefficients = np.array([0, 0, 1])
+
+    g = paste_grids.paste_3d_simplex_grids(g1, g2, plane_coefficients, offset)
+
+    assert g.num_cells == 2 * g1.num_cells
+    assert g.num_faces == 2 * g1.num_faces - np.prod(nx[:2]) * 2
+
+
 @pytest.mark.parametrize("nx", [np.array([1, 1, 1]), np.array([2, 2, 2])])
 def test_faces_from_node_set(nx):
     g = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
@@ -26,17 +43,31 @@ def test_match_nodes(seed):
     np.testing.assert_allclose(n2, common[:, mapped_2])
 
 
-@pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
-@pytest.mark.parametrize("active_dim", [0, 1, 2])
-def test_merge_node_coords(nx, active_dim):
+def _grid_factory(nx, active_dim):
     g1 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
     g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
     offset = 1
 
     g2.nodes[active_dim, :] += offset
+    g1.compute_geometry()
+    g2.compute_geometry()
 
     plane_coefficients = np.zeros(3)
     plane_coefficients[active_dim] = 1
+    return g1, g2, plane_coefficients, offset
+
+
+def _merged_grid_factory(nx, active_dim):
+    nx_merged = np.copy(nx)
+    nx_merged[active_dim] = 2 * nx[active_dim]
+    g_merged = pp.StructuredTetrahedralGrid(nx_merged, [1, 1, 1])
+    return g_merged
+
+
+@pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
+@pytest.mark.parametrize("active_dim", [0, 1, 2])
+def test_merge_node_coords(nx, active_dim):
+    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim)
     nodes, _, _, ind_2 = paste_grids.merge_node_coords(
         g1, g2, plane_coefficients, offset
     )
@@ -51,20 +82,9 @@ def test_merge_node_coords(nx, active_dim):
 @pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
 @pytest.mark.parametrize("active_dim", [0, 1, 2])
 def test_merge_face_nodes(nx, active_dim):
-    g1 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
-    g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
-    offset = 1
+    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim)
 
-    g2.nodes[active_dim, :] += offset
-    g1.compute_geometry()
-    g2.compute_geometry()
-
-    plane_coefficients = np.zeros(3)
-    plane_coefficients[active_dim] = 1
-
-    nx_merged = np.copy(nx)
-    nx_merged[active_dim] = 2 * nx[active_dim]
-    g_merged = pp.StructuredTetrahedralGrid(nx_merged, [1, 1, 1])
+    g_merged = _merged_grid_factory(nx, active_dim)
 
     faces_1 = np.where(g1.face_centers[active_dim, :] == offset)[0]
     faces_2 = np.where(g2.face_centers[active_dim, :] == offset)[0]
@@ -101,20 +121,9 @@ def _mapping_from_coordinates(coord_1, coord_2, mapping, active_dim, offset):
 @pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
 @pytest.mark.parametrize("active_dim", [0, 1, 2])
 def test_merge_cell_faces(nx, active_dim):
-    g1 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
-    g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
-    offset = 1
+    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim)
 
-    g2.nodes[active_dim, :] += offset
-    g1.compute_geometry()
-    g2.compute_geometry()
-
-    plane_coefficients = np.zeros(3)
-    plane_coefficients[active_dim] = 1
-
-    nx_merged = np.copy(nx)
-    nx_merged[active_dim] = 2 * nx[active_dim]
-    g_merged = pp.StructuredTetrahedralGrid(nx_merged, [1, 1, 1])
+    g_merged = _merged_grid_factory(nx, active_dim)
 
     faces_1 = np.where(g1.face_centers[active_dim, :] == offset)[0]
     faces_2 = np.where(g2.face_centers[active_dim, :] == offset)[0]
