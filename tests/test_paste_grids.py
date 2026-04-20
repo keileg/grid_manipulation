@@ -4,6 +4,18 @@ import pytest
 from grid_manipulation import paste_grids
 
 
+@pytest.mark.parametrize("seed", [0, 1, 2])
+def test_match_nodes(seed):
+    np.random.seed(seed)
+    sz = 10
+    n1 = np.random.rand(3, sz)
+    n2 = n1[:, np.random.permutation(sz)]
+    common, mapped_1, mapped_2 = paste_grids.match_nodes(n1, n2)
+
+    np.testing.assert_allclose(n1, common[:, mapped_1])
+    np.testing.assert_allclose(n2, common[:, mapped_2])
+
+
 @pytest.mark.parametrize(
     "surface_coord, const",
     [
