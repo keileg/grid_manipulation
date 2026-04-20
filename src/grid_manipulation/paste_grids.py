@@ -1,5 +1,64 @@
 import numpy as np
 import porepy as pp
+import scipy.sparse as sps
+
+
+def paste_3d_simplex_grids(
+    g1: pp.Grid, g2: pp.Grid, plane_coefficients: np.array, offset: float
+) -> pp.Grid:
+    nodes, nodes_1, nodes_2, node_ind_2 = merge_node_coords(
+        g1, g2, plane_coefficients, offset
+    )
+    faces_1 = faces_from_node_set(g1, nodes_1)
+    faces_2 = faces_from_node_set(g2, nodes_2)
+
+    face_node_indices, face_ind_2 = merge_face_nodes(
+        g1, g2, faces_1, faces_2, node_ind_2
+    )
+    num_faces = face_node_indices.shape[1]
+    face_nodes = sps.csc_matrix(
+        (
+            np.ones(face_node_indices.size, dtype=bool),
+            face_node_indices.ravel(order="F"),
+            np.arange(num_faces * 3 + 1, step=3),
+        ),
+        shape=(nodes.shape[1], num_faces),
+    )
+
+    cell_face_indices = merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2)
+
+    cf_1 = g1.cell_faces_as_dense()
+    cf_2 = g2.cell_faces_as_dense()
+
+    for f1, f2 in zip(faces_1, faces_2):
+        if cf_2[0, f2] > -1:
+            c2 = cf_2[0, f2]
+        else:
+            c2 = cf_2[1, f2]
+        if cf_1[0, f1] > -1:
+            cf_1[1, f1] = c2
+        else:
+            cf_1[0, f1] = c2
+
+    cf_2_reduced = np.delete(cf_2, faces_2, axis=1) + g1.num_cells
+
+    cf_merged = np.hstack((cf_1, cf_2_reduced))
+    row = np.repeat(np.arange(num_faces), 2)
+    col = cf_merged.ravel(order="F")
+    data = np.vstack((np.ones(num_faces), -np.ones(num_faces))).ravel(order="F")
+    mask = col > -1
+    cell_faces = sps.coo_matrix(
+        (data[mask], (row[mask], col[mask])),
+        shape=(num_faces, g1.num_cells + g2.num_cells),
+    ).tocsc()
+
+    return pp.Grid(
+        dim=g1.dim,
+        nodes=nodes,
+        face_nodes=face_nodes,
+        cell_faces=cell_faces,
+        name="glued_grid",
+    )
 
 
 def merge_node_coords(g1, g2, plane_coefficients, offset):

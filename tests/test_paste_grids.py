@@ -4,21 +4,19 @@ import pytest
 from grid_manipulation import paste_grids
 
 
-@pytest.mark.parametrize("nx", [np.array([1, 1, 1])])
-def test_paste_3d_simplex_grids(nx):
-    g1 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
-    g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
-
-    offset = 1
-
-    g2.nodes[2, :] += offset
-
-    plane_coefficients = np.array([0, 0, 1])
+@pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
+@pytest.mark.parametrize("active_dim", [0, 1, 2])
+@pytest.mark.parametrize("flip_nodes", [False, True])
+def test_paste_3d_simplex_grids(nx, active_dim, flip_nodes):
+    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim, flip_nodes)
 
     g = paste_grids.paste_3d_simplex_grids(g1, g2, plane_coefficients, offset)
 
     assert g.num_cells == 2 * g1.num_cells
-    assert g.num_faces == 2 * g1.num_faces - np.prod(nx[:2]) * 2
+    passive_dim = np.delete(np.arange(3), active_dim)
+    assert g.num_faces == 2 * g1.num_faces - np.prod(nx[passive_dim]) * 2
+
+    g.compute_geometry()
 
 
 @pytest.mark.parametrize("nx", [np.array([1, 1, 1]), np.array([2, 2, 2])])
