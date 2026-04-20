@@ -4,6 +4,16 @@ import pytest
 from grid_manipulation import paste_grids
 
 
+@pytest.mark.parametrize("nx", [np.array([1, 1, 1]), np.array([2, 2, 2])])
+def test_faces_from_node_set(nx):
+    g = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
+    node_set = np.where(g.nodes[2, :] == 1)[0]
+    g.compute_geometry()
+    faces = paste_grids.faces_from_node_set(g, node_set)
+    np.testing.assert_array_equal(g.face_centers[2, faces], 1)
+    np.testing.assert_equal(len(faces), np.prod(nx[:2]) * 2)
+
+
 @pytest.mark.parametrize("seed", [0, 1, 2])
 def test_match_nodes(seed):
     np.random.seed(seed)
