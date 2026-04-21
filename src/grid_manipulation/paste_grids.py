@@ -25,7 +25,7 @@ def paste_3d_simplex_grids(
         shape=(nodes.shape[1], num_faces),
     )
 
-    cell_face_indices = merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2)
+    cell_faces = merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2)
 
     return pp.Grid(
         dim=g1.dim,
