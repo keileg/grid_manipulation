@@ -142,6 +142,8 @@ def test_merge_cell_faces(nx, active_dim, flip_nodes):
     cf_merged = paste_grids.merge_cell_faces(g1, g2, faces_1, faces_2, face_map)
     assert cf_merged.shape == (g_merged.num_faces, g_merged.num_cells)
 
+    assert cf_merged.nnz == g_merged.cell_faces.nnz
+
 
 @pytest.mark.parametrize(
     "surface_coord, const",

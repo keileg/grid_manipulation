@@ -112,13 +112,15 @@ def merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2):
         else:
             cf_1[0, f1] = c2 + g1.num_cells
 
-    cf_2_reduced = np.delete(cf_2, faces_2, axis=1) + g1.num_cells
+    cf_2_reduced = np.delete(cf_2, faces_2, axis=1)
+    cf_2_adjusted = cf_2_reduced.copy() + g1.num_cells
 
-    cf_merged = np.hstack((cf_1, cf_2_reduced))
+    mask = np.hstack((cf_1, cf_2_reduced)).ravel(order="F") > -1
+
+    cf_merged = np.hstack((cf_1, cf_2_adjusted))
     row = np.repeat(np.arange(num_faces), 2)
     col = cf_merged.ravel(order="F")
     data = np.vstack((np.ones(num_faces), -np.ones(num_faces))).ravel(order="F")
-    mask = col > -1
     cell_faces = sps.coo_matrix(
         (data[mask], (row[mask], col[mask])),
         shape=(num_faces, g1.num_cells + g2.num_cells),
