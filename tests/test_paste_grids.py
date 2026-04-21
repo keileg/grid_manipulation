@@ -63,7 +63,9 @@ def _grid_factory(nx, active_dim, flip_nodes):
 def _merged_grid_factory(nx, active_dim):
     nx_merged = np.copy(nx)
     nx_merged[active_dim] = 2 * nx[active_dim]
-    g_merged = pp.StructuredTetrahedralGrid(nx_merged, [1, 1, 1])
+    phys_dim = np.ones(3)
+    phys_dim[active_dim] = 2
+    g_merged = pp.StructuredTetrahedralGrid(nx_merged, phys_dim)
     g_merged.compute_geometry()
     return g_merged
 
