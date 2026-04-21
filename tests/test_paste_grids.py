@@ -140,9 +140,7 @@ def test_merge_cell_faces(nx, active_dim, flip_nodes):
     )
 
     cf_merged = paste_grids.merge_cell_faces(g1, g2, faces_1, faces_2, face_map)
-    assert cf_merged.shape[1] == g_merged.num_cells
-
-    assert np.unique(cf_merged).size == g_merged.num_faces
+    assert cf_merged.shape == (g_merged.num_faces, g_merged.num_cells)
 
 
 @pytest.mark.parametrize(

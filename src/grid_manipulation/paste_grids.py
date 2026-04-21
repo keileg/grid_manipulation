@@ -27,31 +27,6 @@ def paste_3d_simplex_grids(
 
     cell_face_indices = merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2)
 
-    cf_1 = g1.cell_faces_as_dense()
-    cf_2 = g2.cell_faces_as_dense()
-
-    for f1, f2 in zip(faces_1, faces_2):
-        if cf_2[0, f2] > -1:
-            c2 = cf_2[0, f2]
-        else:
-            c2 = cf_2[1, f2]
-        if cf_1[0, f1] > -1:
-            cf_1[1, f1] = c2
-        else:
-            cf_1[0, f1] = c2
-
-    cf_2_reduced = np.delete(cf_2, faces_2, axis=1) + g1.num_cells
-
-    cf_merged = np.hstack((cf_1, cf_2_reduced))
-    row = np.repeat(np.arange(num_faces), 2)
-    col = cf_merged.ravel(order="F")
-    data = np.vstack((np.ones(num_faces), -np.ones(num_faces))).ravel(order="F")
-    mask = col > -1
-    cell_faces = sps.coo_matrix(
-        (data[mask], (row[mask], col[mask])),
-        shape=(num_faces, g1.num_cells + g2.num_cells),
-    ).tocsc()
-
     return pp.Grid(
         dim=g1.dim,
         nodes=nodes,
@@ -121,15 +96,34 @@ def merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2):
 
 
 def merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2):
-    cell_faces_1 = g1.cell_faces.tocsc().indices.reshape(
-        (g1.dim + 1, g1.num_cells), order="F"
-    )
-    cell_faces_2 = g2.cell_faces.tocsc().indices.reshape(
-        (g2.dim + 1, g2.num_cells), order="F"
-    )
-    cell_faces_2_mapped = face_ind_2[cell_faces_2]
+    cf_1 = g1.cell_faces_as_dense()
+    cf_2 = g2.cell_faces_as_dense()
 
-    return np.hstack((cell_faces_1, cell_faces_2_mapped))
+    num_faces = cf_1.shape[1] + cf_2.shape[1] - faces_2.size
+
+    for f1, f2 in zip(faces_1, faces_2):
+        if cf_2[0, f2] > -1:
+            c2 = cf_2[0, f2]
+        else:
+            c2 = cf_2[1, f2]
+        assert c2 >= 0
+        if cf_1[0, f1] > -1:
+            cf_1[1, f1] = c2 + g1.num_cells
+        else:
+            cf_1[0, f1] = c2 + g1.num_cells
+
+    cf_2_reduced = np.delete(cf_2, faces_2, axis=1) + g1.num_cells
+
+    cf_merged = np.hstack((cf_1, cf_2_reduced))
+    row = np.repeat(np.arange(num_faces), 2)
+    col = cf_merged.ravel(order="F")
+    data = np.vstack((np.ones(num_faces), -np.ones(num_faces))).ravel(order="F")
+    mask = col > -1
+    cell_faces = sps.coo_matrix(
+        (data[mask], (row[mask], col[mask])),
+        shape=(num_faces, g1.num_cells + g2.num_cells),
+    ).tocsc()
+    return cell_faces
 
 
 def match_nodes(n_1, n_2):
