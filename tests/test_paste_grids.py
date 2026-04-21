@@ -17,6 +17,12 @@ def test_paste_3d_simplex_grids(nx, active_dim, flip_nodes):
     assert g.num_faces == 2 * g1.num_faces - np.prod(nx[passive_dim]) * 2
 
     g.compute_geometry()
+    g_merged = _merged_grid_factory(nx, active_dim)
+
+    for attribute in ["face_centers", "cell_centers", "face_normals", "face_areas"]:
+        pp.applications.test_utils.arrays.compare_arrays(
+            getattr(g, attribute), getattr(g_merged, attribute), tol=1e-8
+        )
 
 
 @pytest.mark.parametrize("nx", [np.array([1, 1, 1]), np.array([2, 2, 2])])
