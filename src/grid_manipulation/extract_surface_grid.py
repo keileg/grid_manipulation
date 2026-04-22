@@ -10,4 +10,4 @@ def extract(g: pp.Grid, target_faces: np.ndarray) -> pp.Grid:
 
     unique_coords = g.nodes[:, unique_nodes]
 
-    return pp.TriangleGrid(unique_coords, fn_unique, g.dim - 1)
+    return pp.TriangleGrid(unique_coords, fn_unique)
