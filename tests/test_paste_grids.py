@@ -17,12 +17,39 @@ def test_paste_3d_simplex_grids(nx, active_dim, flip_nodes):
     assert g.num_faces == 2 * g1.num_faces - np.prod(nx[passive_dim]) * 2
 
     g.compute_geometry()
-    g_merged = _merged_grid_factory(nx, active_dim)
+    g_ref = _merged_grid_factory(nx, active_dim)
 
     for attribute in ["face_centers", "cell_centers", "face_normals", "face_areas"]:
         pp.applications.test_utils.arrays.compare_arrays(
-            getattr(g, attribute), getattr(g_merged, attribute), tol=1e-8
+            getattr(g, attribute), getattr(g_ref, attribute), tol=1e-8
         )
+
+    # Test that faces with the same center are formed by nodes with the same coordinates.
+    fn_ref = g_ref.face_nodes.tocsc()
+    fn_glued = g.face_nodes.tocsc()
+    for fi_glued in range(g.num_faces):
+        ni_glued = fn_glued[:, fi_glued].indices
+        nc_glued = g.nodes[:, ni_glued]
+        fc_glued = g.face_centers[:, fi_glued]
+        fi_ref = np.argmin(np.linalg.norm(g1.face_centers - fc_glued[:, None], axis=0))
+        ni_ref = fn_ref[:, fi_ref].indices
+        nc_ref = g.nodes[:, ni_ref]
+        pp.applications.test_utils.arrays.compare_arrays(nc_glued, nc_ref, tol=1e-8)
+
+    # Test that cells with the same center are formed by faces with the same centers.
+    cf_glued = g.cell_faces.tocsc()
+    cf_ref = g_ref.cell_faces.tocsc()
+    for ci_glued in range(g.num_cells):
+        fi_glued = cf_glued[:, ci_glued].indices
+        fc_glued = g.face_centers[:, fi_glued]
+        ci_ref = np.argmin(
+            np.linalg.norm(
+                g1.cell_centers - g.cell_centers[:, ci_glued][:, None], axis=0
+            )
+        )
+        fi_ref = cf_ref[:, ci_ref].indices
+        fc_ref = g_ref.face_centers[:, fi_ref]
+        pp.applications.test_utils.arrays.compare_arrays(fc_glued, fc_ref, tol=1e-8)
 
 
 @pytest.mark.parametrize("nx", [np.array([1, 1, 1]), np.array([2, 2, 2])])
