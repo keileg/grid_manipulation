@@ -81,7 +81,7 @@ def test_match_nodes(seed):
     np.testing.assert_allclose(n2, common[:, mapped_2])
 
 
-def _grid_factory(nx, active_dim, flip_nodes):
+def _grid_factory(nx, active_dim, flip_nodes, extruded=False):
     g1 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
     g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
     offset = 1
