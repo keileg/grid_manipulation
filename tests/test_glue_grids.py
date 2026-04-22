@@ -53,8 +53,15 @@ def test_paste_3d_simplex_grids(nx, active_dim, flip_nodes):
 
 
 @pytest.mark.parametrize("nx", [np.array([1, 1, 1]), np.array([2, 2, 2])])
-def test_faces_from_node_set(nx):
-    g = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
+@pytest.mark.parametrize("extruded", [False, True])
+def test_faces_from_node_set(nx, extruded):
+    if extruded:
+        nx = np.array([2, 1])
+        g_2d = pp.StructuredTriangleGrid(nx, [1, 1])
+        g, *_ = pp.grid_extrusion.extrude_grid(g_2d, np.array([0, 1]))
+    else:
+        nx = np.array([1, 1, 1])
+        g = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
     node_set = np.where(g.nodes[2, :] == 1)[0]
     g.compute_geometry()
     faces = glue_grids.faces_from_node_set(g, node_set)

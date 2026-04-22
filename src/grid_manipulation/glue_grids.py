@@ -144,8 +144,22 @@ def match_nodes(n_1, n_2):
 
 
 def faces_from_node_set(g: pp.Grid, node_set: np.ndarray) -> np.ndarray:
-    fn = g.face_nodes.tocsc().indices.reshape((g.dim, g.num_faces), order="F")
-    return np.where(np.isin(fn, node_set).all(axis=0))[0]
+    fn = g.face_nodes.tocsc()
+
+    num_nodes_per_face = np.diff(fn.indptr)
+    if np.allclose(num_nodes_per_face, 3):
+        nodes = fn.indices.reshape((g.dim, g.num_faces), order="F")
+        return np.where(np.isin(nodes, node_set).all(axis=0))[0]
+    else:
+        faces = []
+
+        for nn in np.unique(num_nodes_per_face):
+            loc_faces = np.where(num_nodes_per_face == nn)[0]
+            loc_nodes = fn[:, loc_faces].indices.reshape(
+                (nn, loc_faces.size), order="F"
+            )
+            faces.append(loc_faces[np.isin(loc_nodes, node_set).all(axis=0)])
+        return np.hstack(faces)
 
 
 def find_nodes_on_surface(
