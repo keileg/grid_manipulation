@@ -1,7 +1,7 @@
 import porepy as pp
 import numpy as np
 import pytest
-from grid_manipulation import paste_grids
+from grid_manipulation import glue_grids
 
 
 @pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
@@ -10,7 +10,7 @@ from grid_manipulation import paste_grids
 def test_paste_3d_simplex_grids(nx, active_dim, flip_nodes):
     g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim, flip_nodes)
 
-    g = paste_grids.paste_3d_simplex_grids(g1, g2, plane_coefficients, offset)
+    g = glue_grids.paste_3d_simplex_grids(g1, g2, plane_coefficients, offset)
 
     assert g.num_cells == 2 * g1.num_cells
     passive_dim = np.delete(np.arange(3), active_dim)
@@ -57,7 +57,7 @@ def test_faces_from_node_set(nx):
     g = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
     node_set = np.where(g.nodes[2, :] == 1)[0]
     g.compute_geometry()
-    faces = paste_grids.faces_from_node_set(g, node_set)
+    faces = glue_grids.faces_from_node_set(g, node_set)
     np.testing.assert_array_equal(g.face_centers[2, faces], 1)
     np.testing.assert_equal(len(faces), np.prod(nx[:2]) * 2)
 
@@ -68,7 +68,7 @@ def test_match_nodes(seed):
     sz = 10
     n1 = np.random.rand(3, sz)
     n2 = n1[:, np.random.permutation(sz)]
-    common, mapped_1, mapped_2 = paste_grids.match_nodes(n1, n2)
+    common, mapped_1, mapped_2 = glue_grids.match_nodes(n1, n2)
 
     np.testing.assert_allclose(n1, common[:, mapped_1])
     np.testing.assert_allclose(n2, common[:, mapped_2])
@@ -108,7 +108,7 @@ def _merged_grid_factory(nx, active_dim):
 @pytest.mark.parametrize("flip_nodes", [False, True])
 def test_merge_node_coords(nx, active_dim, flip_nodes):
     g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim, flip_nodes)
-    nodes, _, _, ind_2 = paste_grids.merge_node_coords(
+    nodes, _, _, ind_2 = glue_grids.merge_node_coords(
         g1, g2, plane_coefficients, offset
     )
 
@@ -133,7 +133,7 @@ def test_merge_face_nodes(nx, active_dim, flip_nodes):
     node_map = np.arange(g2.num_nodes) + g1.num_nodes
     _mapping_from_coordinates(g1.nodes, g2.nodes, node_map, active_dim, offset)
 
-    fn_merged, face_ind_2 = paste_grids.merge_face_nodes(
+    fn_merged, face_ind_2 = glue_grids.merge_face_nodes(
         g1, g2, faces_1, faces_2, node_map
     )
     assert fn_merged.shape[1] == g_merged.num_faces
@@ -175,7 +175,7 @@ def test_merge_cell_faces(nx, active_dim, flip_nodes):
         g1.face_centers, g2.face_centers, face_map, active_dim, offset
     )
 
-    cf_merged = paste_grids.merge_cell_faces(g1, g2, faces_1, faces_2, face_map)
+    cf_merged = glue_grids.merge_cell_faces(g1, g2, faces_1, faces_2, face_map)
     assert cf_merged.shape == (g_merged.num_faces, g_merged.num_cells)
 
     assert cf_merged.nnz == g_merged.cell_faces.nnz
@@ -201,7 +201,7 @@ def test_find_nodes_on_surface(surface_coord, const):
 
     active_dim = np.where(surface_coord != 0)[0][0]
 
-    nodes = paste_grids.find_nodes_on_surface(g, surface_coord, const, tol)
+    nodes = glue_grids.find_nodes_on_surface(g, surface_coord, const, tol)
 
     expected_nodes = np.where(g.nodes[active_dim, :] == const)[0]
     np.testing.assert_array_equal(np.sort(nodes), np.sort(expected_nodes))
