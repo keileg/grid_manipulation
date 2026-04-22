@@ -78,6 +78,15 @@ def merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2):
     )
     assert fn_unique.shape[1] == faces_1.size
 
+    face_ind_2 = _map_face_indices(g1, g2, faces_1, faces_2, node_ind_2, mapping)
+
+    return (
+        np.hstack((face_nodes_1, face_nodes_2_reduced)),
+        face_ind_2,
+    )
+
+
+def _map_face_indices(g1, g2, faces_1, faces_2, node_ind_2, mapping):
     mapping_1 = mapping[: faces_1.size]
     mapping_2 = mapping[faces_1.size :]
     faces_1_mapped = faces_1[mapping_1]
@@ -88,11 +97,7 @@ def merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2):
     face_ind_2 -= reduction
     for i in range(faces_2.size):
         face_ind_2[faces_2_mapped[i]] = faces_1_mapped[i]
-
-    return (
-        np.hstack((face_nodes_1, face_nodes_2_reduced)),
-        face_ind_2,
-    )
+    return face_ind_2
 
 
 def merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2):
