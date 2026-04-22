@@ -52,41 +52,69 @@ def merge_node_coords(g1, g2, plane_coefficients, offset):
 def merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2):
     # We can relax this assumption, but go for the simpler implementation for now.
     assert np.all(np.diff(g1.face_nodes.tocsc().indptr) == 3)
+    # Stop at the last row, since we will extend this.
+    ind_ptr_1 = g1.face_nodes.tocsc().indptr[:-1]
+
     face_nodes_1 = g1.face_nodes.tocsc().indices.reshape(
         (g1.dim, g1.num_faces), order="F"
     )
-    face_nodes_2 = g2.face_nodes.tocsc().indices.reshape(
-        (g2.dim, g2.num_faces), order="F"
-    )
-    face_nodes_2_mapped = node_ind_2[face_nodes_2]
-    faces_to_delete = face_nodes_2_mapped[:, faces_2].copy()
-    face_nodes_2_reduced = np.delete(face_nodes_2_mapped, faces_2, axis=1)
+    face_inds, mapped_fn = [], []
+    faces_to_delete = []
+    for loc_faces, loc_nodes in _spit_face_nodes_by_num_nodes(g2.face_nodes.tocsc()):
+        loc_fn_mapped = node_ind_2[loc_nodes]
+        cols_to_delete = np.isin(loc_faces, faces_2)
+        # This is not strictly necessary. Intertwined number of nodes per faces must
+        # be handled by looping over individual faces instead of sets of faces with the
+        # same number of nodes - see loop on 'outer' below.
+        assert np.all(np.diff(loc_faces) == 1)
 
+        if np.any(cols_to_delete):
+            # This should only kick in for faces with 3 nodes (since we assume we are
+            # merging along simplex-type faces)
+            assert len(faces_to_delete) == 0
+            assert loc_nodes.shape[0] == 3
+            faces_to_delete.append(loc_fn_mapped[:, cols_to_delete].copy())
+        face_inds.append(loc_faces[~cols_to_delete])
+        mapped_fn.append(loc_fn_mapped[:, ~cols_to_delete])
+
+    order = np.argsort([fi[0] for fi in face_inds])
+    ind_ptr_2 = []
+    node_inds_2 = []
+    counter = ind_ptr_1[-1] + 3
+    for outer in order:
+        nn = mapped_fn[outer].shape[0]
+        ind_ptr_2.append(counter + np.arange(0, nn * mapped_fn[outer].shape[1], nn))
+        counter += nn * mapped_fn[outer].shape[1]
+        node_inds_2.append(mapped_fn[outer].ravel(order="F"))
+
+    ind_ptr_2.append(counter)
+
+    indptr = np.hstack((ind_ptr_1, np.hstack(ind_ptr_2)))
+    node_indices = np.hstack((face_nodes_1.ravel(order="F"), np.hstack(node_inds_2)))
+    data = np.ones(node_indices.size, dtype=bool)
+
+    num_faces = indptr.size - 1
+    num_nodes = node_indices.max() + 1
+    face_nodes = sps.csc_matrix(
+        (
+            data,
+            node_indices.ravel(order="F"),
+            indptr.ravel(order="F"),
+        ),
+        shape=(num_nodes, num_faces),
+    )
+
+    # Find mapping from the deleted faces to the equivalent faces in g1 (hence the full
+    # grid).
     fn_unique, mapping = np.unique(
-        np.sort(np.hstack((face_nodes_1[:, faces_1], faces_to_delete)), axis=0),
+        np.sort(np.hstack((face_nodes_1[:, faces_1], faces_to_delete[0])), axis=0),
         return_inverse=True,
         axis=1,
     )
     assert fn_unique.shape[1] == faces_1.size
 
     face_ind_2 = _map_face_indices(g1, g2, faces_1, faces_2, node_ind_2, mapping)
-
-    face_node_indices = np.hstack((face_nodes_1, face_nodes_2_reduced))
-    num_faces = face_node_indices.shape[1]
-    num_nodes = face_node_indices.max() + 1
-    face_nodes = sps.csc_matrix(
-        (
-            np.ones(face_node_indices.size, dtype=bool),
-            face_node_indices.ravel(order="F"),
-            np.arange(num_faces * 3 + 1, step=3),
-        ),
-        shape=(num_nodes, num_faces),
-    )
-
-    return (
-        face_nodes,
-        face_ind_2,
-    )
+    return (face_nodes, face_ind_2)
 
 
 def _map_face_indices(g1, g2, faces_1, faces_2, node_ind_2, mapping):
