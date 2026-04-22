@@ -1,0 +1,5 @@
+src/grid_manipulation.egg-info/
+
+*.geo
+*.msh
+*.xao
