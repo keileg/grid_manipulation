@@ -12,18 +12,7 @@ def paste_3d_simplex_grids(
     faces_1 = faces_from_node_set(g1, nodes_1)
     faces_2 = faces_from_node_set(g2, nodes_2)
 
-    face_node_indices, face_ind_2 = merge_face_nodes(
-        g1, g2, faces_1, faces_2, node_ind_2
-    )
-    num_faces = face_node_indices.shape[1]
-    face_nodes = sps.csc_matrix(
-        (
-            np.ones(face_node_indices.size, dtype=bool),
-            face_node_indices.ravel(order="F"),
-            np.arange(num_faces * 3 + 1, step=3),
-        ),
-        shape=(nodes.shape[1], num_faces),
-    )
+    face_nodes, face_ind_2 = merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2)
 
     cell_faces = merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2)
 
@@ -80,8 +69,20 @@ def merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2):
 
     face_ind_2 = _map_face_indices(g1, g2, faces_1, faces_2, node_ind_2, mapping)
 
+    face_node_indices = np.hstack((face_nodes_1, face_nodes_2_reduced))
+    num_faces = face_node_indices.shape[1]
+    num_nodes = face_node_indices.max() + 1
+    face_nodes = sps.csc_matrix(
+        (
+            np.ones(face_node_indices.size, dtype=bool),
+            face_node_indices.ravel(order="F"),
+            np.arange(num_faces * 3 + 1, step=3),
+        ),
+        shape=(num_nodes, num_faces),
+    )
+
     return (
-        np.hstack((face_nodes_1, face_nodes_2_reduced)),
+        face_nodes,
         face_ind_2,
     )
 
