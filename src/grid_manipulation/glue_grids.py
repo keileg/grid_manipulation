@@ -157,14 +157,17 @@ def faces_from_node_set(g: pp.Grid, node_set: np.ndarray) -> np.ndarray:
         return np.where(np.isin(nodes, node_set).all(axis=0))[0]
     else:
         faces = []
-
-        for nn in np.unique(num_nodes_per_face):
-            loc_faces = np.where(num_nodes_per_face == nn)[0]
-            loc_nodes = fn[:, loc_faces].indices.reshape(
-                (nn, loc_faces.size), order="F"
-            )
+        for loc_faces, loc_nodes in _spit_face_nodes_by_num_nodes(fn):
             faces.append(loc_faces[np.isin(loc_nodes, node_set).all(axis=0)])
         return np.hstack(faces)
+
+
+def _spit_face_nodes_by_num_nodes(fn):
+    num_nodes_per_face = np.diff(fn.indptr)
+    for nn in np.unique(num_nodes_per_face):
+        loc_faces = np.where(num_nodes_per_face == nn)[0]
+        loc_nodes = fn[:, loc_faces].indices.reshape((nn, loc_faces.size), order="F")
+        yield loc_faces, loc_nodes
 
 
 def find_nodes_on_surface(
