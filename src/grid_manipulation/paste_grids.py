@@ -101,7 +101,8 @@ def merge_cell_faces(g1, g2, faces_1, faces_2, face_ind_2):
 
     num_faces = cf_1.shape[1] + cf_2.shape[1] - faces_2.size
 
-    for f1, f2 in zip(faces_1, faces_2):
+    for f2 in faces_2:
+        f1 = face_ind_2[f2]
         if cf_2[0, f2] > -1:
             c2 = cf_2[0, f2]
         else:
