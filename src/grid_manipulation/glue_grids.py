@@ -50,6 +50,8 @@ def merge_node_coords(g1, g2, plane_coefficients, offset):
 
 
 def merge_face_nodes(g1, g2, faces_1, faces_2, node_ind_2):
+    # We can relax this assumption, but go for the simpler implementation for now.
+    assert np.all(np.diff(g1.face_nodes.tocsc().indptr) == 3)
     face_nodes_1 = g1.face_nodes.tocsc().indices.reshape(
         (g1.dim, g1.num_faces), order="F"
     )
