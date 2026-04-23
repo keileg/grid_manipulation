@@ -83,7 +83,13 @@ def test_match_nodes(seed):
 
 def _grid_factory(nx, active_dim, flip_nodes, extruded=False):
     g1 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
-    g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
+    if extruded and active_dim == 2:
+        g_tmp = pp.StructuredTriangleGrid(nx[:2], [1, 1])
+        g2, *_ = pp.grid_extrusion.extrude_grid(
+            g_tmp, np.linspace(0, 1, nx[active_dim] + 1)
+        )
+    else:
+        g2 = pp.StructuredTetrahedralGrid(nx, [1, 1, 1])
     offset = 1
 
     g2.nodes[active_dim, :] += offset
@@ -129,8 +135,11 @@ def test_merge_node_coords(nx, active_dim, flip_nodes):
 @pytest.mark.parametrize("nx", np.array([[1, 1, 1], [2, 2, 2]]))
 @pytest.mark.parametrize("active_dim", [0, 1, 2])
 @pytest.mark.parametrize("flip_nodes", [False, True])
-def test_merge_face_nodes(nx, active_dim, flip_nodes):
-    g1, g2, plane_coefficients, offset = _grid_factory(nx, active_dim, flip_nodes)
+@pytest.mark.parametrize("extruded", [False, True])
+def test_merge_face_nodes(nx, active_dim, flip_nodes, extruded):
+    g1, g2, plane_coefficients, offset = _grid_factory(
+        nx, active_dim, flip_nodes, extruded
+    )
 
     g_merged = _merged_grid_factory(nx, active_dim)
 
